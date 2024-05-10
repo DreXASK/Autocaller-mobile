@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Autocaller mobile</string>
+    <string name="callDetection">Call Detection</string>
+</resources>
