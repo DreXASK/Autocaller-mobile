@@ -10,36 +10,31 @@ import android.os.PowerManager
 import android.speech.tts.TextToSpeech
 import android.telecom.TelecomManager
 import android.telephony.PhoneStateListener
+import android.telephony.SmsManager
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
 import android.util.Log
 import com.drexask.autocaller.mobile.core.callStatus
-import com.drexask.autocaller.mobile.core.previousChildCount
 import com.drexask.autocaller.mobile.core.utils.CallStatus
 import kotlinx.coroutines.delay
 import java.lang.reflect.Method
 
-class CallService(private val context: Context) {
+class InformService(private val context: Context) {
 
     private val telephonyManager = getTelephonyManager()
     private val telecomManager = getTelecomManager()
     private val iTelephonyMethod = getITelephonyMethod()
+    private val smsManager = getSmsManager()
+
+    val timeToWaitAnswerSeconds = 20
 
     suspend fun makeCall(
-        abc: TextToSpeech
+        textToSpeechService: TextToSpeech,
+        phoneNumber: String,
+        messageToReadAloud: String
     ): Boolean {
 
-        //smsManager.sendTextMessage("89020285716", null, "sms message", null, null)
-
-//                                abc?.speak(
-//                                    "Text, а теперь на русском. Здравствуйте",
-//                                    TextToSpeech.QUEUE_FLUSH,
-//                                    null,
-//                                    null
-//                                )
-//                                delay(3000)
-
-        val toDial = "tel:" + "89020285716"
+        val toDial = "tel:$phoneNumber"
 
         val intent = Intent(Intent.ACTION_CALL, Uri.parse(toDial)).apply {
             putExtra(
@@ -50,21 +45,34 @@ class CallService(private val context: Context) {
         }
         context.startActivity(intent)
 
-        previousChildCount = null
         callStatus = CallStatus.RINGING
 
+        var waitingTimeSeconds = 0
         while (callStatus == CallStatus.RINGING) {
-            Log.d("calls", "Звоним...")
-
             delay(1000)
+            Log.d("calls", "Звоним... $waitingTimeSeconds/$timeToWaitAnswerSeconds")
+
+            if(waitingTimeSeconds >= timeToWaitAnswerSeconds) {
+                Log.d("calls", "Собеседник не ответил на звонок")
+                endCall()
+                Log.d("calls", "Звонок завершен")
+                return false
+            }
+
+            if (telephonyManager.callState == TelephonyManager.CALL_STATE_IDLE) {
+                Log.d("calls", "Собеседник сбросил звонок")
+                textToSpeechService.stop()
+                return false
+            }
+            waitingTimeSeconds++
         }
 
         val audioManager =
             context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         audioManager.setSpeakerphoneOn(true)
 
-        abc.speak(
-            "Text, а теперь на русском. Здравствуйте. 123 123 12321312 21312312312313 ХАхахахаха",
+        textToSpeechService.speak(
+            messageToReadAloud,
             TextToSpeech.QUEUE_FLUSH,
             null,
             null
@@ -76,12 +84,12 @@ class CallService(private val context: Context) {
 
             Log.d("calls", "Звонок активен")
 
-            while (abc.isSpeaking) {
+            while (textToSpeechService.isSpeaking) {
                 Log.d("calls", "Текст говорится")
 
                 if (telephonyManager.callState == TelephonyManager.CALL_STATE_IDLE) {
-                    Log.d("calls", "Звонок сброшен собеседником22222")
-                    abc.stop()
+                    Log.d("calls", "Звонок сброшен собеседником")
+                    textToSpeechService.stop()
                     return false
                 }
 
@@ -91,9 +99,25 @@ class CallService(private val context: Context) {
             callStatus = CallStatus.IDLE
         }
 
-
         Log.d("calls", "Текст высказан")
+        endCall()
+        Log.d("calls", "Звонок завершен")
 
+        return true
+    }
+
+    fun sendSms(
+        phoneNumber: String,
+        messageToSend: String
+    ) {
+        val messageToSendArray = smsManager.divideMessage(messageToSend)
+        messageToSendArray.map {
+            smsManager.sendTextMessage(phoneNumber, null, it, null, null)
+        }
+        Log.d("calls", "SMS отправлено")
+    }
+
+    private fun endCall() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             telecomManager?.endCall()
         } else {
@@ -101,10 +125,14 @@ class CallService(private val context: Context) {
             val endCallMethod = iTelephony?.javaClass?.getDeclaredMethod("endCall")
             endCallMethod?.invoke(iTelephony)
         }
+    }
 
-        Log.d("calls", "Звонок завершен")
-
-        return true
+    private fun getSmsManager(): SmsManager {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            context.getSystemService(SmsManager::class.java)
+        } else {
+            SmsManager.getDefault()
+        }
     }
 
     private fun getTelephonyManager(): TelephonyManager {

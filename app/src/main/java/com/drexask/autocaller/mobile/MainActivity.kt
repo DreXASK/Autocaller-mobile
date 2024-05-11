@@ -10,7 +10,6 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.speech.tts.TextToSpeech
 import android.telephony.SmsManager
 import android.util.Log
 import android.view.accessibility.AccessibilityManager
@@ -23,19 +22,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.drexask.autocaller.mobile.connectionAdjuster.presentation.ConnectionAdjusterScreen
 import com.drexask.autocaller.mobile.caller.domain.CallDetectionAccessibilityService
-import com.drexask.autocaller.mobile.caller.domain.CallService
 import com.drexask.autocaller.mobile.caller.presentation.CallerScreen
 import com.drexask.autocaller.mobile.core.domain.ServerConnection
 import com.drexask.autocaller.mobile.core.domain.usecase.serverConnectionSettings.GetServerConnectionSettingsUseCase
 import com.drexask.autocaller.mobile.ui.theme.AutocallerMobileTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import com.drexask.autocaller.mobile.core.domain.utils.Result
 import com.drexask.autocaller.mobile.core.domain.utils.ServerConnectionStatus
-import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
@@ -63,12 +59,6 @@ class MainActivity : ComponentActivity() {
             ), 100
         )
 
-
-        val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            getSystemService(SmsManager::class.java)
-        } else {
-            SmsManager.getDefault()
-        }
 
         initConnection()
 
@@ -115,9 +105,5 @@ class MainActivity : ComponentActivity() {
                 is Result.Error -> println("initConnection failed, error = ${result.error}")
             }
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
     }
 }

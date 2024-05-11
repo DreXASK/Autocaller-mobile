@@ -8,6 +8,7 @@ sealed interface ApiError: Error {
     }
     sealed interface CallTasksError: ApiError {
         sealed interface Remote: CallTasksError {
+            data object ConnectionRefused: Remote
             data class UnknownError(val text: String): Remote
         }
     }
