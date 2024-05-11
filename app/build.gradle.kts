@@ -69,6 +69,7 @@ dependencies {
     implementation(libs.ktor.client.serialization)
     implementation(libs.ktor.serialization.kotlinx.json)
 
+    implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
     implementation(libs.koin.core.coroutines)
     implementation(libs.koin.ktor)
