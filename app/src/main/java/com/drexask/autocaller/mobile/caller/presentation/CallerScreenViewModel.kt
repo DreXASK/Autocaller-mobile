@@ -4,12 +4,14 @@ import android.speech.tts.TextToSpeech
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.drexask.autocaller.mobile.caller.data.repository.callTasks.CallTasksParameterGetRemote
 import com.drexask.autocaller.mobile.caller.data.repository.callTasks.CallTasksParameterSendRemote
 import com.drexask.autocaller.mobile.caller.domain.InformService
 import com.drexask.autocaller.mobile.caller.domain.usecase.GetCallTaskUseCase
 import com.drexask.autocaller.mobile.caller.domain.usecase.SendResultUseCase
 import com.drexask.autocaller.mobile.core.domain.ServerConnection
+import com.drexask.autocaller.mobile.core.domain.usecase.serverConnectionSettings.DeleteServerConnectionSettingsUseCase
 import com.drexask.autocaller.mobile.core.domain.utils.ApiError
 import com.drexask.autocaller.mobile.core.domain.utils.Result
 import kotlinx.coroutines.CoroutineScope
@@ -22,8 +24,11 @@ import org.koin.java.KoinJavaComponent.inject
 class CallerScreenViewModel : ViewModel() {
 
     private val getCallTaskUseCase by inject<GetCallTaskUseCase>(GetCallTaskUseCase::class.java)
+    private val deleteServerConnectionSettingsUseCase by inject<DeleteServerConnectionSettingsUseCase>(
+        DeleteServerConnectionSettingsUseCase::class.java
+    )
     private val sendResultUseCase by inject<SendResultUseCase>(SendResultUseCase::class.java)
-    private val serverConnection by inject<ServerConnection>(ServerConnection::class.java)
+    val serverConnection by inject<ServerConnection>(ServerConnection::class.java)
 
     var textToSpeech: TextToSpeech? = null
     var job = mutableStateOf<Job?>(null)
@@ -82,11 +87,16 @@ class CallerScreenViewModel : ViewModel() {
                                 Log.d("calls", "Результат успешно отправлен")
                                 break
                             }
+
                             is Result.Error -> {
                                 when (sendResult.error) {
                                     is ApiError.CallTasksError.Remote.ConnectionRefused -> {
-                                        Log.d("calls", "Результат не отправлен - connection refused")
+                                        Log.d(
+                                            "calls",
+                                            "Результат не отправлен - connection refused"
+                                        )
                                     }
+
                                     is ApiError.CallTasksError.Remote.UnknownError -> {
                                         throw Exception("sendResult error - ${sendResult.error.text}")
                                     }
@@ -101,6 +111,13 @@ class CallerScreenViewModel : ViewModel() {
 
             }
 
+        }
+    }
+
+    fun logOutFromServer() {
+        viewModelScope.launch {
+            serverConnection.logoutFromServer()
+            deleteServerConnectionSettingsUseCase.execute()
         }
     }
 
