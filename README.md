@@ -13,6 +13,6 @@
 
 ## Pictures
 <p align="center">
-  <img src="https://i.ibb.co/g4vFfJg/1.png"/>
-  <img src="https://i.ibb.co/9W6VpLK/2.png"/>
+  <img src="https://i.ibb.co/g4vFfJg/1.png" height="600"/>
+  <img src="https://i.ibb.co/9W6VpLK/2.png" height="600"/>
 </p>
